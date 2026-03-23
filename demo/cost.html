@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPUコスト比較 — AWS vs GCP vs GPURental | 最安値を探す</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05050f;--card:#0c0c1a;--card2:#101022;
+  --border:rgba(255,255,255,0.07);
+  --accent:#6c47ff;--accent2:#4fc3f7;
+  --green:#00e676;--red:#ff5252;--orange:#ff9800;--yellow:#ffd740;
+  --text:#e8e8f5;--muted:#606080;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+.bg{position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 40% at 15% 15%,rgba(108,71,255,.1),transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 80%,rgba(0,230,118,.08),transparent 60%);
+}
+.grid-bg{position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+.wrap{position:relative;z-index:1;max-width:1140px;margin:0 auto;padding:0 24px;}
+
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);
+  background:rgba(5,5,15,.85);backdrop-filter:blur(20px);padding:14px 0;}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;text-decoration:none;color:var(--text);}
+.brand-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 15px rgba(108,71,255,.4);}
+.nav-link{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s;}
+.nav-link:hover{color:#fff;}
+
+/* Hero */
+.hero{padding:72px 0 56px;text-align:center;}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(108,71,255,.12);
+  border:1px solid rgba(108,71,255,.3);border-radius:100px;padding:6px 16px;
+  font-size:12px;color:var(--accent2);margin-bottom:24px;text-transform:uppercase;letter-spacing:1px;}
+h1{font-size:clamp(32px,6vw,64px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px;
+  background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{color:var(--muted);font-size:17px;line-height:1.65;max-width:560px;margin:0 auto 40px;}
+
+/* GPU selector */
+.gpu-selector{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;}
+.gpu-btn{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;
+  padding:10px 20px;font-size:14px;color:var(--muted);cursor:pointer;transition:all .2s;font-family:inherit;}
+.gpu-btn.active{background:rgba(108,71,255,.15);border-color:var(--accent);color:#fff;}
+.gpu-btn:hover{background:rgba(108,71,255,.1);border-color:rgba(108,71,255,.4);color:#fff;}
+
+/* Cost grid */
+.cost-section{margin-bottom:64px;}
+.section-head{text-align:center;margin-bottom:40px;}
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px;}
+.section-title{font-size:clamp(22px,3.5vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:10px;}
+.section-sub{color:var(--muted);font-size:15px;}
+
+.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:32px;}
+.cost-card{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:28px;
+  position:relative;transition:all .3s;cursor:default;}
+.cost-card:hover{transform:translateY(-4px);}
+.cost-card.winner{border-color:rgba(0,230,118,.4);box-shadow:0 0 40px rgba(0,230,118,.12);}
+.cost-card.winner::before{content:'✅ 最安値';position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--green),var(--accent2));color:#fff;
+  border-radius:100px;padding:4px 16px;font-size:11px;font-weight:700;white-space:nowrap;}
+
+.provider-logo{font-size:28px;margin-bottom:8px;}
+.provider-name{font-size:22px;font-weight:800;margin-bottom:4px;}
+.provider-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+.price-display{margin-bottom:20px;}
+.price-main{font-size:48px;font-weight:900;font-family:'JetBrains Mono';letter-spacing:-2px;line-height:1;}
+.price-period{font-size:14px;color:var(--muted);margin-top:4px;}
+.price-note{font-size:12px;color:var(--muted);margin-top:4px;}
+
+.monthly{background:rgba(255,255,255,.04);border-radius:10px;padding:14px;margin-bottom:20px;}
+.monthly-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;}
+.monthly-val{font-size:22px;font-weight:800;font-family:'JetBrains Mono';}
+
+.features-list{display:flex;flex-direction:column;gap:8px;}
+.feat-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+.feat-check{color:var(--green);font-size:14px;}
+.feat-cross{color:var(--red);font-size:14px;}
+.feat-warn{color:var(--orange);font-size:14px;}
+
+/* Bar chart */
+.chart-section{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;margin-bottom:48px;}
+.chart-title{font-size:16px;font-weight:700;margin-bottom:24px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.bar-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.bar-label{width:80px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;}
+.bar-track{flex:1;background:rgba(255,255,255,.05);border-radius:6px;height:38px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:14px;
+  font-size:14px;font-weight:700;font-family:'JetBrains Mono';
+  transition:width 1.2s cubic-bezier(.4,0,.2,1);position:relative;}
+.bar-gpurental{background:linear-gradient(90deg,var(--accent),var(--green));}
+.bar-aws{background:linear-gradient(90deg,#ff9800,#ff5252);}
+.bar-gcp{background:linear-gradient(90deg,#4285f4,#ea4335);}
+.bar-azure{background:linear-gradient(90deg,#0078d4,#50e6ff);}
+
+/* Savings highlight */
+.savings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:48px;}
+.saving-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;}
+.saving-pct{font-size:40px;font-weight:900;font-family:'JetBrains Mono';color:var(--green);}
+.saving-vs{font-size:13px;color:var(--muted);margin-top:6px;}
+
+/* CTA */
+.cta-section{text-align:center;padding:56px 0;}
+.cta-title{font-size:clamp(24px,4vw,40px);font-weight:800;letter-spacing:-1px;margin-bottom:16px;}
+.cta-sub{color:var(--muted);font-size:16px;margin-bottom:32px;}
+.cta-btn{display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:14px;padding:18px 40px;font-size:18px;font-weight:700;
+  color:#fff;text-decoration:none;transition:all .2s;
+  box-shadow:0 6px 28px rgba(108,71,255,.4);}
+.cta-btn:hover{transform:translateY(-3px);box-shadow:0 10px 36px rgba(108,71,255,.6);}
+
+footer{border-top:1px solid var(--border);padding:32px 0;text-align:center;color:var(--muted);font-size:13px;}
+footer a{color:var(--accent2);text-decoration:none;}
+
+@media(max-width:768px){
+  .savings-grid{grid-template-columns:repeat(2,1fr);}
+  .cost-grid{grid-template-columns:1fr;}
+  h1{letter-spacing:-2px;}
+}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grid-bg"></div>
+
+<div class="topbar">
+  <div class="wrap"><div class="topbar-inner">
+    <a href="https://gpurental.jp" class="brand"><div class="brand-icon">⚡</div>GPURental</a>
+    <div style="display:flex;gap:20px">
+      <a href="https://gpurental.jp" class="nav-link">🏠 トップ</a>
+      <a href="https://gpurental.jp/provider/" class="nav-link">📡 プロバイダー登録</a>
+      <a href="https://inference.gpurental.jp/demo/" class="nav-link">🤖 AIデモ</a>
+    </div>
+  </div></div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-tag">💰 コスト比較 2026年最新版</div>
+    <h1>GPU料金を<br>徹底比較</h1>
+    <p class="hero-sub">AWS・Google Cloud・Azureと比較。<br>GPURentalが最大<strong style="color:var(--green)">82%安い</strong>理由がわかります。</p>
+  </div>
+
+  <!-- GPU type selector -->
+  <div class="gpu-selector" id="gpuSelector">
+    <button class="gpu-btn active" onclick="selectGpu('a4500',this)">🎯 RTX A4500 (20GB)</button>
+    <button class="gpu-btn" onclick="selectGpu('4090',this)">🔥 RTX 4090 (24GB)</button>
+    <button class="gpu-btn" onclick="selectGpu('a100',this)">⚡ A100 (80GB)</button>
+  </div>
+
+  <!-- Cost cards -->
+  <div class="cost-section">
+    <div class="cost-grid" id="costGrid"></div>
+  </div>
+
+  <!-- Bar chart -->
+  <div class="chart-section">
+    <div class="chart-title">時間コスト比較グラフ (円/時間)</div>
+    <div id="barChart"></div>
+  </div>
+
+  <!-- Savings -->
+  <div class="section-head">
+    <div class="section-label">節約効果</div>
+    <div class="section-title">GPURentalなら<br><span style="color:var(--green)">どれだけ節約できる？</span></div>
+  </div>
+  <div class="savings-grid" id="savingsGrid"></div>
+
+  <!-- Feature compare table -->
+  <div class="chart-section" style="margin-bottom:48px">
+    <div class="chart-title">機能・サービス比較</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:12px 16px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px">機能</th>
+            <th style="padding:12px 16px;text-align:center;color:var(--green);font-weight:700">⚡ GPURental</th>
+            <th style="padding:12px 16px;text-align:center;color:var(--muted)">AWS</th>
+            <th style="padding:12px 16px;text-align:center;color:var(--muted)">GCP</th>
+            <th style="padding:12px 16px;text-align:center;color:var(--muted)">Azure</th>
+          </tr>
+        </thead>
+        <tbody id="featureTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <div class="cta-title">今すぐ<span style="background:linear-gradient(135deg,var(--accent),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent">格安GPU</span>を使い始める</div>
+    <div class="cta-sub">最低¥200/時間から。クレジットカード不要で登録。</div>
+    <a href="https://gpurental.jp/portal/" class="cta-btn">🚀 無料でGPUを試す</a>
+  </div>
+</div>
+
+<footer><div class="wrap">
+  <a href="https://gpurental.jp">GPURental.jp</a> — 日本最安値のGPUレンタル &nbsp;·&nbsp;
+  <a href="https://inference.gpurental.jp/demo/">AIデモ</a> &nbsp;·&nbsp;
+  METADATALAB.INC
+</div></footer>
+
+<script>
+const GPU_DATA = {
+  a4500: {
+    name: 'NVIDIA RTX A4500 (20GB)',
+    providers: [
+      { name:'GPURental', logo:'⚡', color:'var(--green)', hourly:450, currency:'¥', monthly_h:8, note:'自宅GPU・日本語サポート',
+        features:[true,true,true,true,'✅ 日本語',true] },
+      { name:'AWS (g5.xlarge)', logo:'☁️', color:'var(--orange)', hourly:1800, currency:'¥', monthly_h:8, note:'A10G 24GBと同帯域として換算',
+        features:[false,'⚠️ 一部',true,false,'❌ 英語',false] },
+      { name:'Google Cloud', logo:'🔷', color:'#4285f4', hourly:1650, currency:'¥', monthly_h:8, note:'T4相当GPU 換算',
+        features:[false,'⚠️ 一部',true,false,'❌ 英語',false] },
+      { name:'Azure', logo:'🔵', color:'#0078d4', hourly:2100, currency:'¥', monthly_h:8, note:'NC6Ads A100換算',
+        features:[false,false,true,false,'❌ 英語',false] },
+    ]
+  },
+  '4090': {
+    name: 'NVIDIA RTX 4090 (24GB)',
+    providers: [
+      { name:'GPURental', logo:'⚡', color:'var(--green)', hourly:650, currency:'¥', monthly_h:8, note:'自宅GPU・即日開始',
+        features:[true,true,true,true,'✅ 日本語',true] },
+      { name:'RunPod', logo:'🟠', color:'var(--orange)', hourly:870, currency:'¥', monthly_h:8, note:'¥5.74/h → 150円換算',
+        features:['⚠️ 一部',true,true,'⚠️ 一部','❌ 英語',false] },
+      { name:'AWS (p4d.xlarge)', logo:'☁️', color:'#ff9800', hourly:4500, currency:'¥', monthly_h:8, note:'A100相当・最低利用なし',
+        features:[false,'⚠️ 一部',true,false,'❌ 英語',false] },
+      { name:'Vast.ai', logo:'🌐', color:'#9b59b6', hourly:600, currency:'¥', monthly_h:8, note:'個人提供・品質ばらつき',
+        features:['⚠️ 不安定',false,false,false,'❌ 英語',false] },
+    ]
+  },
+  a100: {
+    name: 'NVIDIA A100 (80GB)',
+    providers: [
+      { name:'GPURental (近日公開)', logo:'⚡', color:'var(--green)', hourly:2200, currency:'¥', monthly_h:8, note:'Coming soon',
+        features:[true,true,true,true,'✅ 日本語',true] },
+      { name:'AWS (p4de)', logo:'☁️', color:'var(--orange)', hourly:7500, currency:'¥', monthly_h:8, note:'最低利用時間あり',
+        features:[false,'⚠️ 一部',true,false,'❌ 英語',false] },
+      { name:'Google Cloud (A100)', logo:'🔷', color:'#4285f4', hourly:6000, currency:'¥', monthly_h:8, note:'同上帯域として換算',
+        features:[false,'⚠️ 一部',true,false,'❌ 英語',false] },
+      { name:'Lambda Labs', logo:'🔺', color:'#e74c3c', hourly:2700, currency:'¥', monthly_h:8, note:'AI向けクラウド',
+        features:['⚠️ 一部',false,true,false,'❌ 英語',false] },
+    ]
+  }
+};
+
+const FEATURES_HEADER = ['日本語サポート','カレンダー予約','CUDA対応','日本円決済','サポート言語','プロバイダー参加'];
+const FEATURE_ROWS = [
+  ['🇯🇵 完全日本語対応','❌','❌','❌'],
+  ['📅 時間帯指定予約','❌','❌','❌'],
+  ['⚡ CUDA12.4 対応','✅','✅','✅'],
+  ['💴 日本円（¥）決済','❌ USD','❌ USD','❌ USD'],
+  ['📞 日本語サポート','❌','❌','❌'],
+  ['🏠 自分のGPUで収益化','❌','❌','❌'],
+];
+
+let currentGpu = 'a4500';
+
+function yen(v){ return '¥' + v.toLocaleString(); }
+
+function selectGpu(key, el) {
+  currentGpu = key;
+  document.querySelectorAll('.gpu-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function render() {
+  const data = GPU_DATA[currentGpu];
+  const sorted = [...data.providers].sort((a,b) => a.hourly - b.hourly);
+  const cheapest = sorted[0].hourly;
+
+  // Cost cards
+  const grid = document.getElementById('costGrid');
+  grid.innerHTML = '';
+  data.providers.forEach(p => {
+    const isWinner = p.hourly === cheapest;
+    const monthlySpend = p.hourly * p.monthly_h * 30;
+    const card = document.createElement('div');
+    card.className = 'cost-card' + (isWinner ? ' winner' : '');
+    card.innerHTML = `
+      <div class="provider-logo">${p.logo}</div>
+      <div class="provider-name" style="color:${p.color}">${p.name}</div>
+      <div class="provider-sub">${p.note}</div>
+      <div class="price-display">
+        <div class="price-main" style="color:${isWinner?'var(--green)':p.color}">${yen(p.hourly)}</div>
+        <div class="price-period">/時間</div>
+      </div>
+      <div class="monthly">
+        <div class="monthly-label">月額試算 (${p.monthly_h}h/日 × 30日)</div>
+        <div class="monthly-val" style="color:${isWinner?'var(--green)':'var(--text)'}">${yen(monthlySpend)}</div>
+      </div>
+      ${!isWinner ? `<div style="text-align:center;font-size:13px;color:var(--red)">GPURentalより <strong>${Math.round((p.hourly/cheapest-1)*100)}%</strong> 高い</div>` : '<div style="text-align:center;font-size:13px;color:var(--green)">✅ 最安値</div>'}
+    `;
+    grid.appendChild(card);
+  });
+
+  // Bar chart
+  const maxH = Math.max(...data.providers.map(p=>p.hourly));
+  const chart = document.getElementById('barChart');
+  chart.innerHTML = '';
+  data.providers.forEach((p,i) => {
+    const pct = Math.max(p.hourly/maxH*100,8);
+    const colors = ['bar-gpurental','bar-aws','bar-gcp','bar-azure'];
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label">${p.name.split(' ')[0]}</div>
+      <div class="bar-track">
+        <div class="bar-fill ${colors[i]}" style="width:0%" data-target="${pct}">
+          ${yen(p.hourly)}/h
+        </div>
+      </div>
+    `;
+    chart.appendChild(row);
+  });
+  // Animate bars
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      document.querySelectorAll('.bar-fill[data-target]').forEach(el=>{
+        el.style.width = el.getAttribute('data-target') + '%';
+      });
+    });
+  });
+
+  // Savings
+  const savGrid = document.getElementById('savingsGrid');
+  savGrid.innerHTML = '';
+  const gpurental = data.providers.find(p=>p.name.startsWith('GPU'));
+  data.providers.filter(p=>!p.name.startsWith('GPU')).slice(0,3).forEach(p=>{
+    const saved = Math.round((1 - gpurental.hourly/p.hourly)*100);
+    const saveMonthly = (p.hourly - gpurental.hourly) * p.monthly_h * 30;
+    const c = document.createElement('div');
+    c.className = 'saving-card';
+    c.innerHTML = `
+      <div class="saving-pct">${saved}%</div>
+      <div style="font-size:16px;font-weight:700;margin:8px 0">${p.logo} vs GPURental</div>
+      <div class="saving-vs">${p.name}より<br><strong style="color:var(--green)">${yen(saveMonthly)}/月</strong>節約</div>
+    `;
+    savGrid.appendChild(c);
+  });
+
+  // Feature table
+  const tbody = document.getElementById('featureTable');
+  tbody.innerHTML = '';
+  FEATURE_ROWS.forEach((row,i) => {
+    const tr = document.createElement('tr');
+    tr.style.borderTop = '1px solid var(--border)';
+    if(i%2===1) tr.style.background = 'rgba(255,255,255,.02)';
+    tr.innerHTML = `
+      <td style="padding:12px 16px;color:rgba(255,255,255,.7)">${row[0]}</td>
+      <td style="padding:12px 16px;text-align:center;color:var(--green);font-weight:700">✅</td>
+      <td style="padding:12px 16px;text-align:center;color:rgba(255,255,255,.4)">${row[1]}</td>
+      <td style="padding:12px 16px;text-align:center;color:rgba(255,255,255,.4)">${row[2]}</td>
+      <td style="padding:12px 16px;text-align:center;color:rgba(255,255,255,.4)">${row[3]}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
