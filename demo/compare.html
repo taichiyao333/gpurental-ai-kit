@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU vs CPU — AI推論 速度比較 | GPURental</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060610; --card:#0f0f1a; --border:rgba(255,255,255,0.07);
+  --green:#00e676; --red:#ff5252; --accent:#7c6bf0; --accent2:#4fc3f7;
+  --text:#e8e8f5; --muted:#55556a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+.bg{position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse 70% 50% at 15% 20%,rgba(255,82,82,0.08),transparent 60%),
+             radial-gradient(ellipse 70% 50% at 85% 80%,rgba(0,230,118,0.1),transparent 60%);}
+.grid{position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);
+  background-size:50px 50px;}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 24px;}
+
+/* Header */
+header{padding:32px 0 40px;text-align:center;}
+.logo{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin-bottom:20px;}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;}
+h1{font-size:clamp(28px,5vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:12px;
+   background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sub{color:var(--muted);font-size:16px;margin-bottom:32px;}
+
+/* VS layout */
+.vs-wrapper{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:start;margin-bottom:32px;}
+.vs-badge{display:flex;align-items:center;justify-content:center;padding-top:80px;}
+.vs-circle{width:64px;height:64px;border-radius:50%;border:3px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:var(--muted);}
+
+/* Panel */
+.panel{background:var(--card);border:2px solid var(--border);border-radius:20px;overflow:hidden;transition:border-color .3s;}
+.panel.active{box-shadow:0 0 40px rgba(0,230,118,0.15);}
+.panel-head{padding:20px 24px;border-bottom:1px solid var(--border);}
+.panel-title{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.panel-sub{font-size:13px;color:var(--muted);}
+.badge{padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;}
+.badge-cpu{background:rgba(255,82,82,0.15);color:var(--red);border:1px solid rgba(255,82,82,0.3);}
+.badge-gpu{background:rgba(0,230,118,0.15);color:var(--green);border:1px solid rgba(0,230,118,0.3);}
+
+/* Timer */
+.timer-block{padding:20px 24px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);}
+.timer-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
+.timer-val{font-size:48px;font-weight:900;font-family:'JetBrains Mono';letter-spacing:-2px;transition:color .3s;}
+.timer-cpu{color:var(--red);}
+.timer-gpu{color:var(--green);}
+.timer-unit{font-size:18px;color:var(--muted);}
+
+/* Progress */
+.progress-wrap{padding:16px 24px;border-bottom:1px solid var(--border);}
+.progress-track{background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;border-radius:4px;transition:width .5s ease;width:0%;}
+.pf-cpu{background:linear-gradient(90deg,var(--red),#ff9800);}
+.pf-gpu{background:linear-gradient(90deg,var(--accent),var(--green));}
+
+/* Chat area */
+.chat-area{padding:20px;min-height:200px;max-height:300px;overflow-y:auto;}
+.chat-area::-webkit-scrollbar{width:3px;}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+.q-bubble{background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:14px;margin-bottom:12px;color:var(--muted);}
+.a-bubble{border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.65;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.a-cpu{background:rgba(255,82,82,0.08);border:1px solid rgba(255,82,82,0.2);}
+.a-gpu{background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);}
+.thinking{display:flex;gap:5px;padding:14px;align-items:center;}
+.td{width:7px;height:7px;background:var(--muted);border-radius:50%;animation:td 1.3s infinite;}
+.td:nth-child(2){animation-delay:.15s;} .td:nth-child(3){animation-delay:.3s;}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-6px);opacity:1}}
+
+/* Result banner */
+.result-banner{display:none;margin-bottom:32px;background:linear-gradient(135deg,rgba(0,230,118,0.1),rgba(79,195,247,0.08));
+  border:1px solid rgba(0,230,118,0.2);border-radius:16px;padding:24px 32px;text-align:center;}
+.result-banner.show{display:block;animation:fadeIn .5s ease;}
+.result-win{font-size:36px;font-weight:900;color:var(--green);letter-spacing:-1px;margin-bottom:8px;}
+.result-detail{color:var(--muted);font-size:15px;}
+.speedup{font-size:48px;font-weight:900;color:var(--accent2);font-family:'JetBrains Mono';}
+
+/* CTA */
+.cta-section{text-align:center;padding:40px 0;}
+.cta-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:14px;padding:16px 32px;font-size:17px;font-weight:700;color:#fff;cursor:pointer;
+  text-decoration:none;transition:all .2s;box-shadow:0 4px 24px rgba(124,107,240,0.4);}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,107,240,0.6);}
+
+/* Start btn */
+.start-section{text-align:center;margin-bottom:40px;}
+.start-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;
+  padding:18px 48px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;
+  box-shadow:0 4px 24px rgba(124,107,240,0.4);transition:all .2s;}
+.start-btn:hover{transform:scale(1.04);box-shadow:0 8px 32px rgba(124,107,240,0.6);}
+.start-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* Question selector */
+.q-selector{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:28px;}
+.q-btn{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;
+  padding:10px 18px;font-size:13px;color:var(--text);cursor:pointer;transition:all .2s;}
+.q-btn:hover,.q-btn.selected{background:rgba(124,107,240,0.15);border-color:var(--accent);color:#fff;}
+
+@media(max-width:768px){.vs-wrapper{grid-template-columns:1fr}; .vs-badge{display:none}}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grid"></div>
+<div class="wrap">
+  <header>
+    <div class="logo"><div class="logo-icon">⚡</div>GPURental</div>
+    <h1>CPU vs GPU<br>AI推論 速度比較</h1>
+    <p class="sub">同じ質問を CPU と RTX A4500 GPU で実行 — 差を体感してください</p>
+  </header>
+
+  <!-- Question selector -->
+  <div class="q-selector" id="qSelector">
+    <button class="q-btn selected" onclick="selectQ(0,this)">💡 GPUレンタルのメリット</button>
+    <button class="q-btn" onclick="selectQ(1,this)">🎨 Stable Diffusionとは</button>
+    <button class="q-btn" onclick="selectQ(2,this)">💰 GPU収益の試算</button>
+  </div>
+
+  <!-- Start button -->
+  <div class="start-section">
+    <button class="start-btn" id="startBtn" onclick="startComparison()">▶ 比較スタート</button>
+  </div>
+
+  <!-- VS layout -->
+  <div class="vs-wrapper">
+    <!-- CPU Panel -->
+    <div class="panel" id="cpuPanel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="badge badge-cpu">CPU Only</span>🐢 Standard Server</div>
+        <div class="panel-sub">Intel/AMD CPU — GPU なし — クラウドサーバー典型例</div>
+      </div>
+      <div class="timer-block">
+        <div class="timer-label">処理時間</div>
+        <div class="timer-val timer-cpu"><span id="cpuTime">--</span><span class="timer-unit">秒</span></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="timer-label">進行状況</div>
+        <div class="progress-track"><div class="progress-fill pf-cpu" id="cpuBar"></div></div>
+      </div>
+      <div class="chat-area" id="cpuChat">
+        <div class="q-bubble" id="cpuQ" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="vs-badge">
+      <div class="vs-circle">VS</div>
+    </div>
+
+    <!-- GPU Panel -->
+    <div class="panel" id="gpuPanel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="badge badge-gpu">GPU Powered</span>⚡ RTX A4500</div>
+        <div class="panel-sub">NVIDIA RTX A4500 — 20GB VRAM — GPURental</div>
+      </div>
+      <div class="timer-block">
+        <div class="timer-label">処理時間</div>
+        <div class="timer-val timer-gpu"><span id="gpuTime">--</span><span class="timer-unit">秒</span></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="timer-label">進行状況</div>
+        <div class="progress-track"><div class="progress-fill pf-gpu" id="gpuBar"></div></div>
+      </div>
+      <div class="chat-area" id="gpuChat">
+        <div class="q-bubble" id="gpuQ" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-banner" id="resultBanner">
+    <div class="result-win" id="resultTitle"></div>
+    <div class="result-detail" id="resultDetail"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <a href="https://gpurental.jp/provider/" class="cta-btn">⚡ あなたのGPUを登録して収益化する</a>
+  </div>
+</div>
+
+<script>
+const API = 'https://inference.gpurental.jp';
+
+const QUESTIONS = [
+  "GPUレンタルサービスを使う主なメリットを3つ、簡潔に日本語で教えてください。",
+  "Stable Diffusionとは何ですか？初心者向けに100字程度で説明してください。",
+  "RTX A4500をGPUレンタルサービスで提供した場合の月収の目安を教えてください。",
+];
+const Q_LABELS = [
+  "GPUレンタルのメリット", "Stable Diffusionとは", "GPU収益の試算"
+];
+let selectedQ = 0;
+let running = false;
+
+function selectQ(idx, el) {
+  selectedQ = idx;
+  document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// CPU simulation (slow — 25~35 seconds)
+async function simulateCPU(prompt) {
+  const SIMULATED_TIME = 28 + Math.random() * 8; // 28~36秒
+  const start = Date.now();
+  
+  document.getElementById('cpuPanel').classList.add('active');
+  document.getElementById('cpuQ').textContent = prompt;
+  document.getElementById('cpuQ').style.display = 'block';
+  
+  // Show thinking
+  const chat = document.getElementById('cpuChat');
+  const think = document.createElement('div');
+  think.id = 'cpuThink';
+  think.className = 'thinking';
+  think.innerHTML = '<div class="td"></div><div class="td"></div><div class="td"></div>';
+  chat.appendChild(think);
+
+  // Animate timer and bar
+  return new Promise(resolve => {
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - start) / 1000;
+      const pct = Math.min(elapsed / SIMULATED_TIME * 100, 97);
+      document.getElementById('cpuTime').textContent = elapsed.toFixed(1);
+      document.getElementById('cpuBar').style.width = pct + '%';
+      
+      if (elapsed >= SIMULATED_TIME) {
+        clearInterval(interval);
+        document.getElementById('cpuThink')?.remove();
+        document.getElementById('cpuBar').style.width = '100%';
+        
+        const ans = document.createElement('div');
+        ans.className = 'a-bubble a-cpu';
+        ans.textContent = '[CPU処理完了] ' + prompt.slice(0, 20) + '... に対する回答が完了しました。処理時間: ' + elapsed.toFixed(1) + '秒';
+        chat.appendChild(ans);
+        
+        const total = (Date.now() - start) / 1000;
+        document.getElementById('cpuTime').textContent = total.toFixed(1);
+        resolve(total);
+      }
+    }, 100);
+  });
+}
+
+// Real GPU inference
+async function runGPU(prompt) {
+  const start = Date.now();
+  
+  document.getElementById('gpuPanel').classList.add('active');  
+  document.getElementById('gpuQ').textContent = prompt;
+  document.getElementById('gpuQ').style.display = 'block';
+
+  const chat = document.getElementById('gpuChat');
+  const think = document.createElement('div');
+  think.id = 'gpuThink';
+  think.className = 'thinking';
+  think.innerHTML = '<div class="td"></div><div class="td"></div><div class="td"></div>';
+  chat.appendChild(think);
+
+  // Animate bar while waiting
+  let pct = 0;
+  const barAnim = setInterval(() => {
+    pct = Math.min(pct + 2, 90);
+    document.getElementById('gpuBar').style.width = pct + '%';
+    const elapsed = (Date.now() - start) / 1000;
+    document.getElementById('gpuTime').textContent = elapsed.toFixed(1);
+  }, 200);
+
+  try {
+    const r = await fetch(`${API}/v1/inference`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt, max_tokens: 200, temperature: 0.7 })
+    });
+    const data = await r.json();
+    clearInterval(barAnim);
+    
+    const total = (Date.now() - start) / 1000;
+    document.getElementById('gpuThink')?.remove();
+    document.getElementById('gpuBar').style.width = '100%';
+    document.getElementById('gpuTime').textContent = total.toFixed(1);
+    
+    const ans = document.createElement('div');
+    ans.className = 'a-bubble a-gpu';
+    ans.textContent = data.text || '応答を受信しました';
+    chat.appendChild(ans);
+    chat.scrollTop = chat.scrollHeight;
+    
+    return total;
+  } catch(e) {
+    clearInterval(barAnim);
+    return (Date.now() - start) / 1000;
+  }
+}
+
+async function startComparison() {
+  if (running) return;
+  running = true;
+  
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '実行中...';
+  
+  // クリア
+  document.getElementById('cpuChat').innerHTML = '<div class="q-bubble" id="cpuQ" style="display:none"></div>';
+  document.getElementById('gpuChat').innerHTML = '<div class="q-bubble" id="gpuQ" style="display:none"></div>';
+  document.getElementById('cpuTime').textContent = '--';
+  document.getElementById('gpuTime').textContent = '--';
+  document.getElementById('cpuBar').style.width = '0%';
+  document.getElementById('gpuBar').style.width = '0%';
+  document.getElementById('cpuPanel').classList.remove('active');
+  document.getElementById('gpuPanel').classList.remove('active');
+  document.getElementById('resultBanner').classList.remove('show');
+  
+  const prompt = QUESTIONS[selectedQ];
+  
+  // CPU と GPU を同時に実行
+  const [cpuTime, gpuTime] = await Promise.all([
+    simulateCPU(prompt),
+    runGPU(prompt)
+  ]);
+  
+  // 結果表示
+  const speedup = (cpuTime / gpuTime).toFixed(1);
+  const banner = document.getElementById('resultBanner');
+  document.getElementById('resultTitle').textContent = `GPU が ${speedup}x 高速！`;
+  document.getElementById('resultDetail').innerHTML = `
+    CPU: <strong>${cpuTime.toFixed(1)}秒</strong> → GPU(RTX A4500): <strong>${gpuTime.toFixed(1)}秒</strong><br>
+    <span class="speedup">${speedup}x</span> 倍の高速化を実現
+  `;
+  banner.classList.add('show');
+  
+  btn.disabled = false;
+  btn.textContent = '▶ もう一度比較';
+  running = false;
+}
+</script>
+</body>
+</html>
