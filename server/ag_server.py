@@ -124,6 +124,7 @@ async def inference(request: ChatRequest):
                 payload = {
                     "model": model,
                     "prompt": request.prompt,
+                    "system": "あなたは親切で有能なAIアシスタントです。必ず日本語で回答してください。",
                     "stream": False,
                     "options": {
                         "temperature": request.temperature,

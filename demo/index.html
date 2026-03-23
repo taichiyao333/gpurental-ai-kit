@@ -3,317 +3,437 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPURental AI Demo — RTX A4500 Live Inference</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>GPURental AI — Live Demo | RTX A4500 GPU Inference</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --card: #12121a;
-    --border: rgba(255,255,255,0.08);
-    --accent: #7c6bf0;
-    --accent2: #4fc3f7;
-    --green: #00e676;
-    --text: #e8e8f0;
-    --muted: #666688;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; }
+:root {
+  --bg: #070710;
+  --card: #0f0f1a;
+  --card2: #13131f;
+  --border: rgba(255,255,255,0.07);
+  --accent: #7c6bf0;
+  --accent2: #4fc3f7;
+  --green: #00e676;
+  --orange: #ff9800;
+  --text: #e8e8f5;
+  --muted: #55556a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; overflow-x:hidden; }
 
-  /* ── Animated BG ── */
-  .bg-grid {
-    position:fixed; inset:0; z-index:0;
-    background-image: linear-gradient(rgba(124,107,240,0.04) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(124,107,240,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: bgshift 20s linear infinite;
-  }
-  @keyframes bgshift { 0%{background-position:0 0} 100%{background-position:40px 40px} }
+/* ─── Animated background ─── */
+.bg {
+  position:fixed; inset:0; z-index:0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,107,240,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,195,247,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 60% 30%, rgba(0,230,118,0.04) 0%, transparent 60%);
+  animation: bgpulse 8s ease-in-out infinite alternate;
+}
+@keyframes bgpulse {
+  0% { opacity:0.8; }
+  100% { opacity:1; }
+}
+.grid {
+  position:fixed; inset:0; z-index:0;
+  background-image: linear-gradient(rgba(124,107,240,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(124,107,240,0.03) 1px, transparent 1px);
+  background-size:50px 50px;
+}
 
-  .container { position:relative; z-index:1; max-width:960px; margin:0 auto; padding:40px 24px; }
+/* ─── Layout ─── */
+.wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 24px; }
 
-  /* ── Header ── */
-  header { text-align:center; margin-bottom:48px; }
-  .logo { display:inline-flex; align-items:center; gap:12px; margin-bottom:24px; }
-  .logo-icon {
-    width:48px; height:48px; border-radius:12px;
-    background:linear-gradient(135deg, var(--accent), var(--accent2));
-    display:flex; align-items:center; justify-content:center;
-    font-size:24px; box-shadow:0 0 30px rgba(124,107,240,0.4);
-  }
-  .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
-  h1 { font-size:clamp(32px,5vw,52px); font-weight:900; letter-spacing:-2px; line-height:1.1;
-       background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-  .subtitle { margin-top:12px; color:var(--muted); font-size:16px; }
+/* ─── Top bar ─── */
+.topbar {
+  position:sticky; top:0; z-index:100;
+  border-bottom:1px solid var(--border);
+  background:rgba(7,7,16,0.85); backdrop-filter:blur(20px);
+  padding:14px 0;
+}
+.topbar-inner { display:flex; align-items:center; justify-content:space-between; }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; }
+.brand-icon {
+  width:34px; height:34px; border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+  box-shadow:0 0 20px rgba(124,107,240,0.5);
+}
+.live-pill {
+  display:flex; align-items:center; gap:7px;
+  background:rgba(0,230,118,0.1); border:1px solid rgba(0,230,118,0.25);
+  border-radius:100px; padding:5px 13px; font-size:12px; font-weight:600; color:var(--green);
+}
+.dot-live { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 1.4s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.nav-link { color:var(--muted); font-size:13px; text-decoration:none; transition:color .2s; }
+.nav-link:hover { color:#fff; }
 
-  /* ── GPU Status ── */
-  .gpu-status {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;
-    margin-bottom:32px;
-  }
-  .stat-card {
-    background:var(--card); border:1px solid var(--border); border-radius:12px;
-    padding:16px; text-align:center; transition:all 0.3s;
-  }
-  .stat-card:hover { border-color:var(--accent); transform:translateY(-2px); }
-  .stat-value { font-size:22px; font-weight:700; font-family:'JetBrains Mono',monospace; }
-  .stat-label { font-size:11px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
-  .stat-value.green { color:var(--green); }
-  .stat-value.blue { color:var(--accent2); }
-  .stat-value.purple { color:var(--accent); }
+/* ─── Hero ─── */
+.hero { padding:64px 0 48px; text-align:center; }
+.hero-tag {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(124,107,240,0.12); border:1px solid rgba(124,107,240,0.3);
+  border-radius:100px; padding:7px 16px; font-size:13px; color:var(--accent); margin-bottom:28px;
+}
+h1 {
+  font-size:clamp(36px,6vw,68px); font-weight:900; letter-spacing:-3px; line-height:1.05;
+  background:linear-gradient(135deg,#ffffff 0%,rgba(124,107,240,0.9) 50%,var(--accent2) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:18px;
+}
+.hero-sub { color:var(--muted); font-size:18px; line-height:1.6; max-width:560px; margin:0 auto 40px; }
 
-  /* ── Live indicator ── */
-  .live-badge {
-    display:inline-flex; align-items:center; gap:8px;
-    background:rgba(0,230,118,0.1); border:1px solid rgba(0,230,118,0.3);
-    border-radius:100px; padding:6px 14px; font-size:13px; font-weight:600; color:var(--green);
-    margin-bottom:32px;
-  }
-  .live-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+/* ─── GPU Stats grid ─── */
+.stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:40px; }
+.stat {
+  background:var(--card); border:1px solid var(--border); border-radius:14px;
+  padding:18px 12px; text-align:center; transition:all .3s; position:relative; overflow:hidden;
+}
+.stat::before {
+  content:''; position:absolute; inset:0; opacity:0; transition:.3s;
+  background:radial-gradient(circle at 50% 0%, rgba(124,107,240,0.15), transparent 70%);
+}
+.stat:hover::before { opacity:1; }
+.stat:hover { border-color:rgba(124,107,240,0.4); transform:translateY(-3px); }
+.stat-num { font-size:26px; font-weight:700; font-family:'JetBrains Mono'; margin-bottom:6px; }
+.stat-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; }
+.c-green { color:var(--green); }
+.c-blue { color:var(--accent2); }
+.c-purple { color:var(--accent); }
+.c-orange { color:var(--orange); }
+.c-white { color:#fff; }
 
-  /* ── Chat UI ── */
-  .chat-container {
-    background:var(--card); border:1px solid var(--border); border-radius:20px;
-    overflow:hidden; margin-bottom:24px;
-  }
-  .chat-header {
-    background:linear-gradient(135deg, rgba(124,107,240,0.15), rgba(79,195,247,0.1));
-    border-bottom:1px solid var(--border); padding:16px 24px;
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  .chat-header-title { font-weight:600; display:flex; align-items:center; gap:8px; }
-  .model-badge {
-    background:rgba(124,107,240,0.2); border:1px solid rgba(124,107,240,0.4);
-    border-radius:6px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono';
-    color:var(--accent);
-  }
-  .chat-messages { padding:24px; min-height:300px; max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; }
-  .chat-messages::-webkit-scrollbar { width:4px; }
-  .chat-messages::-webkit-scrollbar-track { background:transparent; }
-  .chat-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+/* ─── Perf bars ─── */
+.perf-section { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }
+.perf-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px 24px; }
+.perf-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
+.perf-name { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.perf-value { font-size:24px; font-weight:700; font-family:'JetBrains Mono'; }
+.bar-track { background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:6px; transition:width 1s cubic-bezier(.4,0,.2,1); }
+.bar-gpu { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.bar-mem { background:linear-gradient(90deg,var(--green),var(--accent2)); }
 
-  .msg { display:flex; gap:12px; animation:fadeIn 0.3s ease; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .msg.user { flex-direction:row-reverse; }
-  .avatar { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-  .avatar.ai { background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 20px rgba(124,107,240,0.3); }
-  .avatar.user-av { background:rgba(255,255,255,0.1); }
-  .bubble {
-    max-width:75%; padding:14px 18px; border-radius:14px; font-size:15px; line-height:1.6;
-  }
-  .bubble.ai { background:rgba(124,107,240,0.12); border:1px solid rgba(124,107,240,0.2); border-top-left-radius:4px; }
-  .bubble.user { background:linear-gradient(135deg,var(--accent),rgba(79,195,247,0.8)); color:#fff; border-top-right-radius:4px; }
+/* ─── Main demo area ─── */
+.demo-grid { display:grid; grid-template-columns:300px 1fr; gap:20px; margin-bottom:32px; }
 
-  /* ── Thinking animation ── */
-  .thinking { display:flex; align-items:center; gap:6px; padding:12px 16px; }
-  .dot { width:8px; height:8px; background:var(--accent); border-radius:50%; animation:bounce 1.4s infinite; }
-  .dot:nth-child(2){ animation-delay:0.2s; }
-  .dot:nth-child(3){ animation-delay:0.4s; }
-  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-8px)} }
+/* ─── Sidebar ─── */
+.sidebar { display:flex; flex-direction:column; gap:12px; }
+.sidebar-card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.sidebar-title { padding:14px 18px; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; }
+.preset-list { padding:10px; display:flex; flex-direction:column; gap:6px; }
+.preset-item {
+  padding:11px 14px; border-radius:9px; font-size:13px; cursor:pointer; line-height:1.4;
+  background:rgba(255,255,255,0.03); border:1px solid transparent;
+  transition:all .2s; color:var(--text);
+}
+.preset-item:hover { background:rgba(124,107,240,0.12); border-color:rgba(124,107,240,0.3); color:#fff; }
+.preset-item .tag { font-size:10px; display:block; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:1px; }
 
-  /* ── GPU Activity ── */
-  .gpu-activity {
-    margin-top:8px; padding:8px 12px; background:rgba(0,230,118,0.06);
-    border:1px solid rgba(0,230,118,0.15); border-radius:8px;
-    font-size:12px; font-family:'JetBrains Mono'; color:var(--green);
-    display:none;
-  }
-  .gpu-activity.show { display:block; }
+.gpu-info-list { padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+.gpu-info-row { display:flex; justify-content:space-between; font-size:13px; }
+.gpu-info-key { color:var(--muted); }
+.gpu-info-val { font-family:'JetBrains Mono'; font-size:12px; font-weight:500; }
 
-  /* ── Input area ── */
-  .chat-input-area {
-    border-top:1px solid var(--border); padding:16px 24px;
-    display:flex; gap:12px; align-items:flex-end;
-  }
-  .prompt-input {
-    flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border);
-    border-radius:12px; padding:14px 16px; color:var(--text); font-family:'Inter'; font-size:15px;
-    resize:none; outline:none; transition:border-color 0.2s; min-height:52px; max-height:120px;
-  }
-  .prompt-input:focus { border-color:var(--accent); }
-  .prompt-input::placeholder { color:var(--muted); }
-  .send-btn {
-    background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none;
-    width:52px; height:52px; border-radius:12px; cursor:pointer; display:flex;
-    align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0;
-    font-size:20px; box-shadow:0 4px 20px rgba(124,107,240,0.4);
-  }
-  .send-btn:hover { transform:scale(1.05); box-shadow:0 6px 30px rgba(124,107,240,0.6); }
-  .send-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+/* ─── Chat panel ─── */
+.chat-panel { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+.chat-head {
+  padding:16px 22px; border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(124,107,240,0.1),rgba(79,195,247,0.05));
+  display:flex; align-items:center; justify-content:space-between;
+}
+.chat-head-left { display:flex; align-items:center; gap:10px; }
+.chat-avatar { width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 0 20px rgba(124,107,240,0.4); }
+.chat-model { font-size:12px; color:var(--muted); margin-top:2px; font-family:'JetBrains Mono'; }
+.endpoint-badge { font-size:11px; font-family:'JetBrains Mono'; color:rgba(79,195,247,0.7); background:rgba(79,195,247,0.08); border:1px solid rgba(79,195,247,0.2); border-radius:6px; padding:4px 10px; }
 
-  /* ── Presets ── */
-  .presets { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
-  .preset-btn {
-    background:rgba(255,255,255,0.04); border:1px solid var(--border);
-    border-radius:100px; padding:8px 16px; font-size:13px; color:var(--text);
-    cursor:pointer; transition:all 0.2s; font-family:'Inter';
-  }
-  .preset-btn:hover { background:rgba(124,107,240,0.15); border-color:var(--accent); color:#fff; }
+.msgs { padding:22px; flex:1; min-height:340px; max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:18px; }
+.msgs::-webkit-scrollbar { width:3px; }
+.msgs::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
 
-  /* ── Perf bar ── */
-  .perf-row { display:flex; gap:12px; margin-bottom:24px; }
-  .perf-card {
-    flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;
-  }
-  .perf-title { font-size:12px; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; }
-  .perf-bar-wrap { background:rgba(255,255,255,0.05); border-radius:4px; height:6px; overflow:hidden; }
-  .perf-bar { height:100%; border-radius:4px; transition:width 0.8s ease; }
-  .perf-bar.gpu { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
-  .perf-bar.mem { background:linear-gradient(90deg,var(--green),var(--accent2)); }
-  .perf-val { font-size:18px; font-weight:700; font-family:'JetBrains Mono'; margin-bottom:6px; }
+.msg { display:flex; gap:12px; animation:msgIn .3s ease; }
+@keyframes msgIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.msg.user { flex-direction:row-reverse; }
+.av { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.av.ai { background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 15px rgba(124,107,240,0.3); }
+.av.u { background:rgba(255,255,255,0.1); }
+.bub { max-width:78%; padding:13px 17px; line-height:1.65; font-size:14.5px; border-radius:13px; }
+.bub.ai { background:rgba(124,107,240,0.1); border:1px solid rgba(124,107,240,0.18); border-top-left-radius:4px; }
+.bub.user { background:linear-gradient(135deg,var(--accent),rgba(79,195,247,0.85)); color:#fff; border-top-right-radius:4px; }
+.meta { margin-top:8px; font-size:11px; font-family:'JetBrains Mono'; display:flex; flex-wrap:wrap; gap:8px; }
+.meta-tag { padding:3px 9px; border-radius:5px; }
+.meta-gpu { background:rgba(0,230,118,0.1); color:var(--green); border:1px solid rgba(0,230,118,0.2); }
+.meta-time { background:rgba(124,107,240,0.1); color:var(--accent); border:1px solid rgba(124,107,240,0.2); }
+.meta-eng { background:rgba(79,195,247,0.1); color:var(--accent2); border:1px solid rgba(79,195,247,0.2); }
 
-  /* ── Footer ── */
-  footer { text-align:center; margin-top:48px; color:var(--muted); font-size:13px; }
-  footer a { color:var(--accent2); text-decoration:none; }
+/* typing dots */
+.typing { display:flex; align-items:center; gap:5px; padding:14px; }
+.td { width:8px; height:8px; background:var(--accent); border-radius:50%; animation:td 1.3s infinite; }
+.td:nth-child(2){ animation-delay:.15s; } .td:nth-child(3){ animation-delay:.3s; }
+@keyframes td { 0%,60%,100%{transform:translateY(0);opacity:.6} 30%{transform:translateY(-7px);opacity:1} }
 
-  @media(max-width:600px) {
-    .perf-row { flex-direction:column; }
-    .gpu-status { grid-template-columns:repeat(2,1fr); }
-  }
+/* ─── Input ─── */
+.inp-area { border-top:1px solid var(--border); padding:16px 20px; display:flex; gap:11px; align-items:flex-end; background:var(--card2); }
+.inp {
+  flex:1; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px;
+  padding:13px 16px; color:var(--text); font-family:'Inter'; font-size:14.5px;
+  resize:none; outline:none; transition:border-color .2s; min-height:50px; max-height:120px; line-height:1.5;
+}
+.inp:focus { border-color:rgba(124,107,240,0.5); background:rgba(124,107,240,0.04); }
+.inp::placeholder { color:var(--muted); }
+.send {
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none;
+  width:50px; height:50px; border-radius:12px; cursor:pointer; font-size:20px;
+  transition:all .2s; box-shadow:0 4px 20px rgba(124,107,240,0.4); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.send:hover { transform:scale(1.07); box-shadow:0 6px 28px rgba(124,107,240,0.6); }
+.send:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+
+/* ─── Log panel ─── */
+.log-panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px 24px; margin-bottom:40px; }
+.log-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:12px; }
+.log-list { font-family:'JetBrains Mono'; font-size:12px; color:rgba(0,230,118,0.8); display:flex; flex-direction:column; gap:5px; max-height:120px; overflow-y:auto; }
+.log-line::before { content:"$ "; color:var(--muted); }
+
+/* ─── Footer ─── */
+footer { border-top:1px solid var(--border); padding:32px 0; text-align:center; color:var(--muted); font-size:13px; }
+footer a { color:var(--accent2); text-decoration:none; }
+
+@media(max-width:768px) {
+  .demo-grid { grid-template-columns:1fr; }
+  .stats-row { grid-template-columns:repeat(3,1fr); }
+  .perf-section { grid-template-columns:1fr; }
+  h1 { letter-spacing:-2px; }
+}
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="container">
+<div class="bg"></div>
+<div class="grid"></div>
 
-  <!-- Header -->
-  <header>
-    <div class="logo">
-      <div class="logo-icon">⚡</div>
-      <div class="logo-text">GPURental AI</div>
-    </div>
-    <div class="live-badge">
-      <div class="live-dot"></div>
-      LIVE — NVIDIA RTX A4500 稼働中
-    </div>
-    <h1>GPU-Powered<br>AI Inference</h1>
-    <p class="subtitle">RTX A4500 20GB VRAM — リアルタイムAI推論デモ</p>
-  </header>
-
-  <!-- GPU Stats -->
-  <div class="gpu-status" id="gpuStats">
-    <div class="stat-card">
-      <div class="stat-value green" id="statGpuUtil">—</div>
-      <div class="stat-label">GPU使用率</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value blue" id="statVram">20GB</div>
-      <div class="stat-label">VRAM</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value purple" id="statLatency">—</div>
-      <div class="stat-label">最終レイテンシ</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="statTemp" style="color:#ff9800">—</div>
-      <div class="stat-label">GPU温度</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value green" id="statModel">—</div>
-      <div class="stat-label">AIモデル</div>
-    </div>
-  </div>
-
-  <!-- Perf Bars -->
-  <div class="perf-row">
-    <div class="perf-card">
-      <div class="perf-title">GPU使用率</div>
-      <div class="perf-val green" id="perfGpuVal">0%</div>
-      <div class="perf-bar-wrap"><div class="perf-bar gpu" id="perfGpuBar" style="width:0%"></div></div>
-    </div>
-    <div class="perf-card">
-      <div class="perf-title">VRAMメモリ使用量</div>
-      <div class="perf-val blue" id="perfMemVal">0 / 20470 MB</div>
-      <div class="perf-bar-wrap"><div class="perf-bar mem" id="perfMemBar" style="width:5%"></div></div>
-    </div>
-  </div>
-
-  <!-- Preset prompts -->
-  <div class="presets">
-    <button class="preset-btn" onclick="setPrompt('GPUレンタルはどんな使い方ができますか？')">💡 GPUレンタルの活用法</button>
-    <button class="preset-btn" onclick="setPrompt('RTX A4500でStable Diffusionを使うには？')">🎨 Stable Diffusion</button>
-    <button class="preset-btn" onclick="setPrompt('機械学習のトレーニングを高速化する方法を教えてください')">🤖 ML高速化</button>
-    <button class="preset-btn" onclick="setPrompt('LLMのファインチューニングに必要なVRAM量は？')">📊 LLMファインチューニング</button>
-  </div>
-
-  <!-- Chat -->
-  <div class="chat-container">
-    <div class="chat-header">
-      <div class="chat-header-title">
-        🧠 AI Assistant
-        <span class="model-badge" id="modelBadge">llama3.2</span>
+<!-- Topbar -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        GPURental AI
       </div>
-      <div style="font-size:12px;color:var(--muted)">inference.gpurental.jp</div>
+      <div class="live-pill"><div class="dot-live"></div>LIVE GPU</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <a href="https://gpurental.jp" class="nav-link">🏠 プラットフォーム</a>
+        <a href="https://gpurental.jp/provider/" class="nav-link">📡 GPUを提供</a>
+      </div>
     </div>
-    <div class="chat-messages" id="chatMessages">
-      <div class="msg">
-        <div class="avatar ai">⚡</div>
-        <div>
-          <div class="bubble ai">こんにちは！RTX A4500（20GB VRAM）でGPU推論サービスを提供しています。<br>何でも質問してください！</div>
-          <div class="gpu-activity show">🟢 GPU稼働中 — NVIDIA RTX A4500 | Ollama + Llama3.2</div>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-tag">⚡ NVIDIA RTX A4500 — 20GB VRAM — リアルタイム推論</div>
+    <h1>GPU-Powered<br>AI Inference Demo</h1>
+    <p class="hero-sub">家庭用PCのGPUをクラウドAIに変える。<br>GPURentalがあなたのRTX A4500をAI推論サーバーに変えました。</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-num c-green" id="sGpu">—</div>
+      <div class="stat-lbl">GPU使用率</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num c-blue" id="sVram">20GB</div>
+      <div class="stat-lbl">VRAM容量</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num c-orange" id="sTemp">—</div>
+      <div class="stat-lbl">GPU温度</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num c-purple" id="sLatency">—</div>
+      <div class="stat-lbl">レイテンシ</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num c-white" id="sReqs">0</div>
+      <div class="stat-lbl">総リクエスト</div>
+    </div>
+  </div>
+
+  <!-- Perf bars -->
+  <div class="perf-section">
+    <div class="perf-card">
+      <div class="perf-top">
+        <div class="perf-name">GPU Utilization</div>
+        <div class="perf-value c-green" id="pGpuVal">0%</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill bar-gpu" id="pGpuBar" style="width:1%"></div></div>
+    </div>
+    <div class="perf-card">
+      <div class="perf-top">
+        <div class="perf-name">VRAM Usage</div>
+        <div class="perf-value c-blue" id="pMemVal">— / 20470 MB</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill bar-mem" id="pMemBar" style="width:1%"></div></div>
+    </div>
+  </div>
+
+  <!-- Demo grid -->
+  <div class="demo-grid">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- GPU Info -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">🖥 GPU情報</div>
+        <div class="gpu-info-list">
+          <div class="gpu-info-row"><span class="gpu-info-key">Model</span><span class="gpu-info-val c-white" id="gpuName">RTX A4500</span></div>
+          <div class="gpu-info-row"><span class="gpu-info-key">VRAM</span><span class="gpu-info-val c-blue">20GB GDDR6</span></div>
+          <div class="gpu-info-row"><span class="gpu-info-key">CUDA Cores</span><span class="gpu-info-val">7168</span></div>
+          <div class="gpu-info-row"><span class="gpu-info-key">AI Model</span><span class="gpu-info-val c-purple" id="gpuModel">llama3.2</span></div>
+          <div class="gpu-info-row"><span class="gpu-info-key">Engine</span><span class="gpu-info-val c-green">Ollama</span></div>
+          <div class="gpu-info-row"><span class="gpu-info-key">Endpoint</span><span class="gpu-info-val c-blue" style="font-size:10px">inference.gpurental.jp</span></div>
         </div>
       </div>
+
+      <!-- Presets -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">💡 デモ用質問</div>
+        <div class="preset-list" id="presetList"></div>
+      </div>
     </div>
-    <div class="chat-input-area">
-      <textarea class="prompt-input" id="promptInput" placeholder="質問を入力してください... (Shift+Enter で送信)" rows="1"
-        onkeydown="if((event.shiftKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();sendMessage();}
-                   if(!event.shiftKey&&event.key==='Enter'){event.preventDefault();sendMessage();}
-                   auto_resize(this)"></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+
+    <!-- Chat -->
+    <div class="chat-panel">
+      <div class="chat-head">
+        <div class="chat-head-left">
+          <div class="chat-avatar">🧠</div>
+          <div>
+            <div style="font-weight:600;font-size:15px">AI Assistant</div>
+            <div class="chat-model" id="chatModel">llama3.2 on RTX A4500</div>
+          </div>
+        </div>
+        <div class="endpoint-badge">inference.gpurental.jp</div>
+      </div>
+      <div class="msgs" id="msgs">
+        <div class="msg">
+          <div class="av ai">⚡</div>
+          <div>
+            <div class="bub ai">
+              <strong>GPURental AI</strong> へようこそ！<br><br>
+              このデモでは、家庭用PC（NVIDIA RTX A4500 / 20GB）を<strong>AI推論サーバー</strong>として活用しています。<br><br>
+              下の質問ボタンを使うか、自由に質問してください！
+            </div>
+            <div class="meta">
+              <span class="meta-tag meta-gpu">🟢 GPU: NVIDIA RTX A4500</span>
+              <span class="meta-tag meta-eng">⚡ Engine: Ollama + llama3.2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="inp-area">
+        <textarea class="inp" id="inp" placeholder="質問を入力... (Enter で送信)" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+        <button class="send" id="sendBtn" onclick="send()">➤</button>
+      </div>
     </div>
   </div>
 
-  <footer>
-    Powered by <a href="https://gpurental.jp">GPURental.jp</a> — GPU Computing for Everyone
-  </footer>
+  <!-- Log -->
+  <div class="log-panel">
+    <div class="log-title">📟 サーバーログ (リアルタイム)</div>
+    <div class="log-list" id="logList">
+      <div class="log-line">GPURental AI Inference Server v2.0 起動完了</div>
+      <div class="log-line">GPU: NVIDIA RTX A4500 (20GB VRAM) 検出</div>
+      <div class="log-line">Ollama + llama3.2 ロード完了</div>
+      <div class="log-line">Cloudflare Tunnel 接続中: inference.gpurental.jp</div>
+    </div>
+  </div>
 </div>
+
+<footer>
+  <div class="wrap">
+    Powered by <a href="https://gpurental.jp">GPURental.jp</a> — GPU Computing for Everyone &nbsp;·&nbsp;
+    <a href="https://github.com/taichiyao333/gpurental-ai-kit">GitHub</a> &nbsp;·&nbsp;
+    METADATALAB.INC
+  </div>
+</footer>
 
 <script>
 const API = 'https://inference.gpurental.jp';
-let msgCount = 0;
+let reqCount = 0;
 
-function auto_resize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+// ─── Preset questions ───
+const PRESETS = [
+  { label:'🚀 GPUレンタルのメリットは？', 
+    prompt:'GPUレンタルサービスを使う主なメリットを3つ、簡潔に日本語で教えてください。', tag:'ビジネス' },
+  { label:'🎨 画像生成AIを動かすには？', 
+    prompt:'Stable DiffusionをRTX A4500で動かすための最低限の手順を教えてください。', tag:'使い方' },
+  { label:'🤖 LLMの学習コストは？', 
+    prompt:'小規模なLLM（7Bパラメータ）をファインチューニングするのに必要なGPUメモリと時間の目安を教えてください。', tag:'技術' },
+  { label:'💰 月収はどれくらい？', 
+    prompt:'RTX A4500をGPUレンタルサービスで提供した場合、月にどのくらいの収益が見込めますか？', tag:'収益' },
+  { label:'⚡ AIアプリを爆速化する方法', 
+    prompt:'PythonのAIアプリケーションをGPUで高速化するための基本的なテクニックを3つ教えてください。', tag:'開発' },
+];
+
+// Presetボタン生成
+const pl = document.getElementById('presetList');
+PRESETS.forEach(p => {
+  const el = document.createElement('div');
+  el.className = 'preset-item';
+  el.innerHTML = `${p.label}<span class="tag">${p.tag}</span>`;
+  el.onclick = () => { document.getElementById('inp').value = p.prompt; send(); };
+  pl.appendChild(el);
+});
+
+// ─── Log helper ───
+function addLog(msg) {
+  const ll = document.getElementById('logList');
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  d.textContent = `[${new Date().toLocaleTimeString('ja')}] ${msg}`;
+  ll.appendChild(d);
+  ll.scrollTop = ll.scrollHeight;
+  if (ll.children.length > 20) ll.removeChild(ll.children[0]);
 }
 
-function setPrompt(text) {
-  document.getElementById('promptInput').value = text;
-  document.getElementById('promptInput').focus();
-}
-
-function addMsg(role, text, gpuInfo) {
-  const c = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = `msg ${role === 'user' ? 'user' : ''}`;
-  const avIcon = role === 'user' ? '👤' : '⚡';
-  const avClass = role === 'user' ? 'user-av' : 'ai';
-  const bubClass = role === 'user' ? 'user' : 'ai';
-  const gpuLine = gpuInfo && role === 'ai' ?
-    `<div class="gpu-activity show">🟢 GPU: ${gpuInfo.gpu} | ${gpuInfo.temp} | 処理時間: ${gpuInfo.ms}ms | エンジン: ${gpuInfo.engine}</div>` : '';
-  div.innerHTML = `
-    <div class="avatar ${avClass}">${avIcon}</div>
-    <div>
-      <div class="bubble ${bubClass}">${text.replace(/\n/g,'<br>')}</div>
-      ${gpuLine}
+// ─── Chat ───
+function addMsg(role, text, meta) {
+  const c = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = `msg${role==='user'?' user':''}`;
+  const icon = role==='user' ? '👤' : '🧠';
+  const avCls = role==='user' ? 'u' : 'ai';
+  const bubCls = role==='user' ? 'user' : 'ai';
+  let metaHtml = '';
+  if (meta && role === 'ai') {
+    metaHtml = `<div class="meta">
+      <span class="meta-tag meta-gpu">🟢 GPU: ${meta.gpu}</span>
+      <span class="meta-tag meta-time">⏱ ${meta.ms}ms</span>
+      <span class="meta-tag meta-eng">⚡ ${meta.engine}</span>
     </div>`;
-  c.appendChild(div);
-  c.scrollTop = c.scrollHeight;
-  return div;
-}
-
-function addThinking() {
-  const c = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'msg';
-  div.id = 'thinking';
-  div.innerHTML = `<div class="avatar ai">⚡</div><div class="bubble ai"><div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
-  c.appendChild(div);
+  }
+  d.innerHTML = `<div class="av ${avCls}">${icon}</div><div><div class="bub ${bubCls}">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>${metaHtml}</div>`;
+  c.appendChild(d);
   c.scrollTop = c.scrollHeight;
 }
 
-async function sendMessage() {
-  const inp = document.getElementById('promptInput');
+function showTyping() {
+  const c = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg'; d.id = 'typing';
+  d.innerHTML = `<div class="av ai">🧠</div><div class="bub ai"><div class="typing"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+async function send() {
+  const inp = document.getElementById('inp');
   const btn = document.getElementById('sendBtn');
   const prompt = inp.value.trim();
   if (!prompt || btn.disabled) return;
@@ -321,63 +441,72 @@ async function sendMessage() {
   addMsg('user', prompt);
   inp.value = ''; inp.style.height = 'auto';
   btn.disabled = true;
-  addThinking();
+  showTyping();
+  addLog(`推論リクエスト送信: "${prompt.slice(0,40)}..."`);
 
   try {
     const t0 = Date.now();
     const r = await fetch(`${API}/v1/inference`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, max_tokens: 512, temperature: 0.7 })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ prompt, max_tokens:400, temperature:0.7 })
     });
     const data = await r.json();
-    document.getElementById('thinking')?.remove();
+    document.getElementById('typing')?.remove();
 
-    const gpuInfo = {
+    const ms = data.compute_time_ms || (Date.now()-t0);
+    const meta = {
       gpu: data.gpu_utilization || 'N/A',
       temp: data.gpu_temperature || 'N/A',
-      ms: data.compute_time_ms || Math.round(Date.now()-t0),
+      ms: ms,
       engine: data.engine || 'rtx_a4500'
     };
-    addMsg('ai', data.text || 'エラーが発生しました', gpuInfo);
+
+    addMsg('ai', data.text || '応答を受信しました', meta);
+    addLog(`推論完了 | GPU: ${meta.gpu} | Temp: ${meta.temp} | ${ms}ms`);
 
     // Update stats
-    document.getElementById('statLatency').textContent = gpuInfo.ms + 'ms';
-    document.getElementById('statGpuUtil').textContent = gpuInfo.gpu;
-    document.getElementById('statTemp').textContent = gpuInfo.temp;
-    document.getElementById('perfGpuVal').textContent = gpuInfo.gpu;
-    const pct = parseInt(gpuInfo.gpu) || 0;
-    document.getElementById('perfGpuBar').style.width = pct + '%';
+    reqCount++;
+    document.getElementById('sReqs').textContent = reqCount;
+    document.getElementById('sLatency').textContent = ms + 'ms';
+    document.getElementById('sGpu').textContent = meta.gpu;
+    document.getElementById('sTemp').textContent = meta.temp;
+    document.getElementById('pGpuVal').textContent = meta.gpu;
+    const pct = parseInt(meta.gpu) || 0;
+    document.getElementById('pGpuBar').style.width = Math.max(pct,2) + '%';
 
   } catch(e) {
-    document.getElementById('thinking')?.remove();
-    addMsg('ai', 'サーバーへの接続中... しばらくお待ちください。');
+    document.getElementById('typing')?.remove();
+    addMsg('ai', '⚠️ サーバーに接続できません。しばらくお待ちください。');
+    addLog(`エラー: ${e.message}`);
   }
   btn.disabled = false;
   inp.focus();
 }
 
-// 起動時にGPU状態を取得
-async function fetchHealth() {
+// ─── Health polling ───
+async function poll() {
   try {
     const r = await fetch(`${API}/health`);
     const d = await r.json();
     if (d.gpu) {
-      document.getElementById('statGpuUtil').textContent = d.gpu.utilization || 'N/A';
-      document.getElementById('statVram').textContent = Math.round(d.gpu.memory_total_mb/1024) + 'GB';
-      document.getElementById('statTemp').textContent = d.gpu.temperature || 'N/A';
-      document.getElementById('statModel').textContent = d.model || 'llama3.2';
-      document.getElementById('modelBadge').textContent = d.model || 'llama3.2';
+      const u = parseInt(d.gpu.utilization) || 0;
       const used = d.gpu.memory_used_mb || 0;
       const total = d.gpu.memory_total_mb || 20470;
-      document.getElementById('perfMemVal').textContent = `${used} / ${total} MB`;
-      document.getElementById('perfMemBar').style.width = (used/total*100) + '%';
+      document.getElementById('sGpu').textContent = d.gpu.utilization || '0%';
+      document.getElementById('sTemp').textContent = d.gpu.temperature || '—';
+      document.getElementById('pGpuVal').textContent = d.gpu.utilization || '0%';
+      document.getElementById('pGpuBar').style.width = Math.max(u,2) + '%';
+      document.getElementById('pMemVal').textContent = `${used.toLocaleString()} / ${total.toLocaleString()} MB`;
+      document.getElementById('pMemBar').style.width = Math.max(used/total*100,2) + '%';
+      document.getElementById('gpuName').textContent = (d.gpu.name || 'RTX A4500').replace('NVIDIA ','');
+      document.getElementById('gpuModel').textContent = d.model || 'llama3.2';
+      document.getElementById('chatModel').textContent = `${d.model || 'llama3.2'} on ${(d.gpu.name||'RTX A4500').replace('NVIDIA ','')}`;
     }
-  } catch(e) { console.log('Health check error:', e); }
+  } catch(e) {}
 }
-
-fetchHealth();
-setInterval(fetchHealth, 5000);
+poll();
+setInterval(poll, 4000);
 </script>
 </body>
 </html>
